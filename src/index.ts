@@ -3,7 +3,11 @@
 
 import process from 'process';
 import * as dotenv from "dotenv";
-dotenv.config({ path: __dirname + '/.env' });
+
+if (!process.env.BAYSHORE_NIX)
+{
+    dotenv.config({path: __dirname + '/.env'});
+}
 
 let tracing: any = {};
 
@@ -26,6 +30,7 @@ import * as Sentry from '@sentry/node';
 import * as Tracing from '@sentry/tracing';
 import * as common from './modules/util/common';
 import { ocmScheduler } from './modules/ghost/ghost_ocm';
+import path from 'path';
 
 globalAgent.options.keepAlive = true;
 
@@ -109,7 +114,7 @@ allnetApp.use((req, res, next) => {
 });
 
 // Get all of the files in the modules directory
-let dirs = fs.readdirSync('dist/modules');
+let dirs = fs.readdirSync(path.join(path.dirname(__filename), 'modules'));
 // Loop over the files
 for (let i of dirs) {
     // If the file is a .js file
@@ -145,8 +150,14 @@ if (useSentry) {
 }
 
 // Get the wangan key / certificate file
-let key = fs.readFileSync('./server_wangan.key');
-let cert = fs.readFileSync('./server_wangan.crt');
+let dataPathBase = process.env.BAYSHORE_NIX ? process.env.BAYSHORE_DATA_PATH : '.';
+if (!dataPathBase)
+{
+    throw new Error('Please set BAYSHORE_DATA_PATH.');
+}
+
+let key = fs.readFileSync(path.join(dataPathBase, 'server_wangan.key'));
+let cert = fs.readFileSync(path.join(dataPathBase, 'server_wangan.crt'));
 
 // Create the (ALL.Net) server
 http.createServer(allnetApp).listen(PORT_ALLNET, '0.0.0.0', 511, () => {
