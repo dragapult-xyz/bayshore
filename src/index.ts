@@ -3,7 +3,7 @@
 
 import process from 'process';
 import * as dotenv from "dotenv";
-dotenv.config({path: __dirname + '/.env'});
+dotenv.config({ path: __dirname + '/.env' });
 
 let tracing: any = {};
 
@@ -14,8 +14,8 @@ if (process.env.OPENTELEMETRY_ENABLED === "true") {
 }
 
 import express, { Router } from 'express';
-import {PrismaClient} from '@prisma/client';
-import https, {globalAgent} from 'https';
+import { PrismaClient } from '@prisma/client';
+import https, { globalAgent } from 'https';
 import http from 'http';
 import fs from 'fs';
 import bodyParser from 'body-parser';
@@ -25,6 +25,7 @@ import { Config } from './config';
 import * as Sentry from '@sentry/node';
 import * as Tracing from '@sentry/tracing';
 import * as common from './modules/util/common';
+import { ocmScheduler } from './modules/ghost/ghost_ocm';
 
 globalAgent.options.keepAlive = true;
 
@@ -54,7 +55,7 @@ if (useSentry) {
     Sentry.init({
         dsn: Config.getConfig().sentryDsn,
         integrations: [
-            new Sentry.Integrations.Http({tracing: true}),
+            new Sentry.Integrations.Http({ tracing: true }),
             new Tracing.Integrations.Express({
                 router: appRouter,
             })
@@ -110,11 +111,9 @@ allnetApp.use((req, res, next) => {
 // Get all of the files in the modules directory
 let dirs = fs.readdirSync('dist/modules');
 // Loop over the files
-for (let i of dirs) 
-{
+for (let i of dirs) {
     // If the file is a .js file
-    if (i.endsWith('.js')) 
-    {
+    if (i.endsWith('.js')) {
         // Require the module file
         let mod = require(`./modules/${i.substring(0, i.length - 3)}`); // .js extension
 
@@ -140,8 +139,7 @@ new AllnetModule().register(allnetApp);
 new MuchaModule().register(muchaApp);
 
 // Sentry is in use
-if (useSentry)
-{
+if (useSentry) {
     // Use the sentry error handler
     app.use(Sentry.Handlers.errorHandler());
 }
@@ -153,21 +151,26 @@ let cert = fs.readFileSync('./server_wangan.crt');
 // Create the (ALL.Net) server
 http.createServer(allnetApp).listen(PORT_ALLNET, '0.0.0.0', 511, () => {
     console.log(`ALL.net server listening on port ${PORT_ALLNET}!`);
+
     let unix = Config.getConfig().unix;
+
     if (unix && process.platform == 'linux') {
         console.log('Downgrading permissions...');
         process.setgid!(unix.setgid);
         process.setuid!(unix.setuid);
         console.log('Done!');
     }
+
+    // Run ocm scheduling service
+    ocmScheduler();
 })
 
 // Create the mucha server
-https.createServer({key, cert}, muchaApp).listen(PORT_MUCHA, '0.0.0.0', 511, () => {
+https.createServer({ key, cert }, muchaApp).listen(PORT_MUCHA, '0.0.0.0', 511, () => {
     console.log(`Mucha server listening on port ${PORT_MUCHA}!`);
 })
 
 // Create the game server
-https.createServer({key, cert}, app).listen(PORT_BNGI, '0.0.0.0', 511, () => {
+https.createServer({ key, cert }, app).listen(PORT_BNGI, '0.0.0.0', 511, () => {
     console.log(`Game server listening on port ${PORT_BNGI}!`);
 })

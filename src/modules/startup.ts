@@ -8,7 +8,6 @@ import * as wm from "../wmmt/wm.proto";
 import * as common from "./util/common";
 import * as startupFunctions from "./startup/functions";
 
-
 export default class StartupModule extends Module {
     register(app: Application): void {
 
